@@ -151,7 +151,7 @@
     }
     .flight-form {
       display: grid;
-      grid-template-columns: 1fr 1fr 1.05fr .8fr;
+      grid-template-columns: 1fr 1fr 1.05fr 1.05fr .8fr;
       gap: 12px;
     }
     .services-section { margin-top: 20px; }
@@ -423,6 +423,10 @@
               <span>DEPARTURE DATE</span>
               <input id="travel-date" name="travel-date" type="date" required>
             </label>
+            <label class="field" for="return-date">
+              <span>RETURN DATE (OPTIONAL)</span>
+              <input id="return-date" name="return-date" type="date">
+            </label>
             <label class="field" for="passengers">
               <span>PASSENGERS</span>
               <select id="passengers" name="passengers" required>
@@ -511,6 +515,7 @@
       const origin = document.getElementById("origin");
       const destination = document.getElementById("destination");
       const date = document.getElementById("travel-date");
+      const returnDate = document.getElementById("return-date");
       const passengers = document.getElementById("passengers");
       const panel = document.getElementById("request-panel");
       const requestText = document.getElementById("request-text");
@@ -581,6 +586,11 @@
       };
 
       date.min = getManilaToday();
+      returnDate.min = date.value || date.min;
+      date.addEventListener("input", () => {
+        returnDate.min = date.value || date.min;
+        returnDate.setCustomValidity("");
+      });
 
       form.addEventListener("input", clearRequest);
       form.addEventListener("change", clearRequest);
@@ -590,6 +600,11 @@
         const to = resolveAirport(destination.value);
         origin.setCustomValidity(from ? "" : "Choose an airport from the suggestions.");
         destination.setCustomValidity(to ? "" : "Choose an airport from the suggestions.");
+        returnDate.setCustomValidity(
+          returnDate.value && returnDate.value < date.value
+            ? "Return date must be on or after the departure date."
+            : ""
+        );
         if (!form.reportValidity()) return;
         origin.value = from.label;
         destination.value = to.label;
@@ -604,6 +619,12 @@
           timeZone: "Asia/Manila",
           dateStyle: "long"
         }).format(new Date(`${date.value}T12:00:00+08:00`));
+        const selectedReturnDate = returnDate.value
+          ? new Intl.DateTimeFormat("en-PH", {
+            timeZone: "Asia/Manila",
+            dateStyle: "long"
+          }).format(new Date(`${returnDate.value}T12:00:00+08:00`))
+          : "";
         const passengerCount = Number(passengers.value);
         const selectedServices = Array.from(form.querySelectorAll('.service-option[aria-pressed="true"]'))
           .map((service) => service.dataset.service);
@@ -612,6 +633,7 @@
           `Origin: ${from.municipality || from.name} — ${from.name} (${from.iata_code}, ${from.iso_country})`,
           `Destination: ${to.municipality || to.name} — ${to.name} (${to.iata_code}, ${to.iso_country})`,
           `Departure date: ${selectedDate}`,
+          ...(selectedReturnDate ? [`Return date: ${selectedReturnDate}`] : []),
           `Passengers: ${passengerCount}`,
           ...(selectedServices.length ? [`Other services requested: ${selectedServices.join(", ")}`] : [])
         ].join("\n");
